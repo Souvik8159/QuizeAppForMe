@@ -4,55 +4,155 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quiz Questions</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: antiquewhite;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        section {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        #quizQuestions {
+            margin-bottom: 20px;
+        }
+
+        .question {
+            margin-bottom: 10px;
+        }
+
+        label {
+            margin-left: 5px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
 </head>
 <body>
+    <div class="container">
     <h1>Quiz Questions</h1>
+    <section style="display: flex;justify-content: space-between;">
+        <div>Attempt: <span id="attemptCount">0</span></div>
+        <div>Score: <span id="score">0</span></div>
+    </section>
     <div id="quizQuestions"></div>
 
+    <button id="submitButton">Submit</button>
+    <button id="nextButton" style="display:none">Next Question</button>
+    <button id="resetButton" style="display:none"  onclick="location.reload()">Reset Quiz</button>
+    
+    </div>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
+        let score = 0;
+        let attemptCount = 0;
+        let currentQuestionIndex = 0;
+
         async function getquest() {
             try {
                 const response = await fetch("http://localhost:3000/getquestion");
                 const data = await response.json();
                 console.log(data);
 
-                // Shuffle the array of questions
                 const shuffledQuestions = shuffle(data);
-
-                // Select the first 5 questions
                 const selectedQuestions = shuffledQuestions.slice(0, 5);
-
-                // Clear previous content
                 $('#quizQuestions').empty();
 
-                // Loop through the selected questions and create HTML elements
-                selectedQuestions.forEach(question => {
-                    let optionsHtml = "";
-                    if (question.option && question.option.length > 0) {
-                        question.option.forEach(option => {
-                            optionsHtml += `
-                                <div>
-                                    <input type="checkbox" id="${option}" name="${question.title}" value="${option}">
-                                    <label for="${option}">${option}</label>
-                                </div>
-                            `;
-                        });
-                    }
-                    const questionElement = `
-                        <div class="question">
-                            <h3>${question.question}</h3>
-                            ${optionsHtml}
-                        </div>
-                    `;
-                    $('#quizQuestions').append(questionElement);
+                renderQuestion(selectedQuestions[currentQuestionIndex]);
+
+                $('#submitButton').click(function() {
+                    checkAnswer(selectedQuestions[currentQuestionIndex]);
                 });
+
+                $('#nextButton').click(function() {
+                    currentQuestionIndex++;
+                    if (currentQuestionIndex < selectedQuestions.length) {
+                        renderQuestion(selectedQuestions[currentQuestionIndex]);
+                        $('#submitButton').show();
+                        $('#nextButton').hide();
+                    } else {
+                        alert('End of Quiz!');
+                        document.getElementById("resetButton").style.display="block";
+                        $('#submitButton').hide();
+                        $('#nextButton').hide();
+                    }
+                });
+
             } catch (error) {
                 console.error('Error fetching data:', error);
             }
         }
 
-        // Function to shuffle an array
+        function renderQuestion(question) {
+            let optionsHtml = "";
+            if (question.option && question.option.length > 0) {
+                question.option.forEach((option,index) => {
+                    optionsHtml += `
+                        <div>
+                            <input type="checkbox" id="${option}" name="${question._id}" value="${index}">
+                            <label for="${option}">${option}</label>
+                        </div>
+                    `;
+                });
+            }
+            const questionElement = `
+                <div class="question">
+                    <h3>${question.question}</h3>
+                    ${optionsHtml}
+                    
+                </div>
+            `;
+            $('#quizQuestions').html(questionElement);
+        }
+
+        function checkAnswer(question) {
+            attemptCount++;
+            $('#attemptCount').text(attemptCount);
+
+            const correctIndex = parseInt(question.correct);
+            console.log(correctIndex);
+            let selectedIndexes = [];
+            $('input[type="checkbox"]:checked').each(function() {
+                let selectValue=$(this).val();
+                selectedIndexes.push(parseInt(selectValue));
+            });
+            console.log(selectedIndexes);
+            if (selectedIndexes[0] === correctIndex) {
+                score++;
+                $('#score').text(score);
+            }
+
+            $('#submitButton').hide();
+            $('#nextButton').show();
+        }
+
         function shuffle(array) {
             let currentIndex = array.length, randomIndex;
             while (currentIndex != 0) {
@@ -62,8 +162,6 @@
             }
             return array;
         }
-
-        // Call the function when the page loads
         $(document).ready(function() {
             getquest();
         });
